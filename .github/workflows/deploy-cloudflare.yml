@@ -22,28 +22,33 @@ jobs:
           git checkout main
           git merge upstream/main
 
-      # Set up Node.js (for deploying with Cloudflare Pages)
-      - name: Set up Node.js
-        uses: actions/setup-node@v2
+      # Set up Python environment
+      - name: Set up Python
+        uses: actions/setup-python@v4
         with:
-          node-version: '16'
+          python-version: '3.11'
 
-      # Install dependencies (if necessary)
+      # Install project dependencies from pyproject.toml
       - name: Install dependencies
         run: |
-          npm install
+          python -m venv .venv
+          source .venv/bin/activate
+          pip install --upgrade pip
+          pip install -r requirements.txt  # 如果有生成 requirements.txt
+          # 如果没有 requirements.txt，可以通过 `pyproject.toml` 安装依赖
+          pip install .
 
-      # Build the project (adjust if needed)
-      - name: Build project
+      # Run any necessary Python script or command (e.g., a build script or main.py)
+      - name: Run Python Script (if necessary)
         run: |
-          npm run build
+          python src/main.py
 
-      # Deploy to Cloudflare Pages
+      # Deploy to Cloudflare Pages (optional, depending on project setup)
       - name: Deploy to Cloudflare Pages
         env:
           CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}  # 使用你的 Cloudflare API Token
         run: |
-          curl -X POST https://api.cloudflare.com/client/v4/accounts/YOUR_ACCOUNT_ID/pages/projects/YOUR_PROJECT_NAME/deployments \
+          curl -X POST https://api.cloudflare.com/client/v4/accounts/${{ secrets.CF_ACCOUNT_ID }}/pages/projects/${{ secrets.CF_PROJECT_NAME }}/deployments \
             -H "Authorization: Bearer $CF_API_TOKEN" \
             -F "branch=main" \
             -F "metadata[deploy_env]=production"
