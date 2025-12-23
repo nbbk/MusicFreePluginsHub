@@ -1,8 +1,5 @@
 name: Daily Update Plugins
 
-# 触发条件：
-# 1. 每天北京时间早上 8 点 (UTC 0:00) 自动运行
-# 2. 允许手动点击按钮运行 (workflow_dispatch)
 on:
   schedule:
     - cron: '0 0 * * *'
@@ -22,21 +19,19 @@ jobs:
         python-version: '3.10'
         
     - name: Install dependencies
-      # 这里会尝试安装依赖，如果有 requirements.txt
       run: |
         python -m pip install --upgrade pip
+        # 尝试安装根目录或 src 目录下的依赖
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+        if [ -f src/requirements.txt ]; then pip install -r src/requirements.txt; fi
         
     - name: Run generator script
-      # 运行主程序，根据你的仓库实际入口文件可能是 main.py 或 index.py
-      # 如果报错找不到文件，请确认你仓库根目录下的 python 文件名
-      run: python main.py
+      # 重点修改这里：指向 src/main.py
+      run: python src/main.py
       
     - name: Commit and Push changes
-      # 将生成的新 json 文件提交回仓库
       run: |
         git config --local user.email "github-actions[bot]@users.noreply.github.com"
         git config --local user.name "github-actions[bot]"
         git add .
-        # 只有当文件发生变化时才提交，避免空提交报错
         git diff --quiet && git diff --staged --quiet || (git commit -m "Auto update plugins [skip ci]" && git push)
