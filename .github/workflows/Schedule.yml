@@ -1,30 +1,42 @@
-name: Scheduled Python Worker
+name: Daily Update Plugins
 
+# 触发条件：
+# 1. 每天北京时间早上 8 点 (UTC 0:00) 自动运行
+# 2. 允许手动点击按钮运行 (workflow_dispatch)
 on:
   schedule:
-    - cron: "0 17 */2 * *" # 每隔两天 UTC 时间 17:00 (北京时间凌晨 1:00) 运行
-  workflow_dispatch: # 添加手动触发器
+    - cron: '0 0 * * *'
+  workflow_dispatch:
 
 jobs:
-  run-worker:
+  build:
     runs-on: ubuntu-latest
-
+    
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup Python environment
-        uses: ./.github/actions/setup-python
-
-      - name: Install prerequisites
-        run: uv sync --all-extras --dev
-
-      - name: Run Python Script
-        run: uv run src/main.py
-
-      - name: Commit and Push
-        run: |
-          git config user.name github-actions[bot]
-          git config user.email github-actions[bot]@users.noreply.github.com
-          git add .
-          git diff-index --quiet HEAD || git commit -m "chore: update plugins.json"
-          git push
+    - name: Checkout code
+      uses: actions/checkout@v3
+      
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+        
+    - name: Install dependencies
+      # 这里会尝试安装依赖，如果有 requirements.txt
+      run: |
+        python -m pip install --upgrade pip
+        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+        
+    - name: Run generator script
+      # 运行主程序，根据你的仓库实际入口文件可能是 main.py 或 index.py
+      # 如果报错找不到文件，请确认你仓库根目录下的 python 文件名
+      run: python main.py
+      
+    - name: Commit and Push changes
+      # 将生成的新 json 文件提交回仓库
+      run: |
+        git config --local user.email "github-actions[bot]@users.noreply.github.com"
+        git config --local user.name "github-actions[bot]"
+        git add .
+        # 只有当文件发生变化时才提交，避免空提交报错
+        git diff --quiet && git diff --staged --quiet || (git commit -m "Auto update plugins [skip ci]" && git push)
